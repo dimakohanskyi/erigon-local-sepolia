@@ -1,0 +1,125 @@
+services:
+  erigon:
+    image: erigontech/erigon:latest
+    container_name: erigon-test
+    command:
+      - --datadir=/home/erigon/.local/share/erigon
+      - --chain=sepolia
+      - --prune.mode=minimal
+      - --persist.receipts=true
+      - --private.api.addr=0.0.0.0:9090
+      - --http.addr=0.0.0.0
+      - --http.port=8545
+      - --http.api=eth,erigon,web3,net,debug,trace,txpool
+      - --http.vhosts=*
+      - --http.corsdomain=*
+      - --metrics
+      - --metrics.addr=0.0.0.0
+      - --metrics.port=6060
+      - --pprof
+      - --pprof.addr=0.0.0.0
+      - --pprof.port=6061
+      - --log.console.verbosity=info
+    ports:
+      - "8545:8545"     # JSON-RPC HTTP
+      - "9090:9090"     # Private API (for remote access)
+      - "30303:30303"   # P2P TCP
+      - "30303:30303/udp" # P2P UDP
+      - "6060:6060"     # Metrics
+      - "6061:6061"     # Pprof
+    volumes:
+      # Main data directory - this is where all blockchain data is stored
+      - ${ERIGON_DATA_DIR:-./test-data}:/home/erigon/.local/share/erigon
+    environment:
+      - ERIGON_USER=erigon
+    restart: unless-stopped
+    mem_swappiness: 0
+    user: "${DOCKER_UID:-1000}:${DOCKER_GID:-1000}"
+    networks:
+      - erigon-network
+    # Resource limits for testing environment
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
+
+  # Optional: Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: erigon-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+    networks:
+      - erigon-network
+    depends_on:
+      - erigon
+
+  # Optional: Loki for log aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: erigon-loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yml:/etc/loki/local-config.yaml
+      - loki-data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+    networks:
+      - erigon-network
+
+  # Promtail for collecting logs
+  promtail:
+    image: grafana/promtail:latest
+    container_name: erigon-promtail
+    volumes:
+      - ./promtail-config.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yml
+    restart: unless-stopped
+    networks:
+      - erigon-network
+    depends_on:
+      - loki
+
+  # Optional: Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: erigon-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
+      - ./grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml
+      - ./grafana-dashboard.json:/etc/grafana/provisioning/dashboards/erigon.json
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    restart: unless-stopped
+    networks:
+      - erigon-network
+    depends_on:
+      - prometheus
+      - loki
+
+networks:
+  erigon-network:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  loki-data:

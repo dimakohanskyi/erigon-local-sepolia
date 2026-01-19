@@ -1,0 +1,25 @@
+# Blockchain data directory
+test-data/
+
+# Docker volumes (if mounted locally)
+grafana-data/
+prometheus-data/
+loki-data/
+
+# Environment variables (if you create one)
+.env
+.env.local
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
