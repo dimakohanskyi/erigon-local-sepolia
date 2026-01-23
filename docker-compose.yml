@@ -13,6 +13,8 @@ services:
       - --http.api=eth,erigon,web3,net,debug,trace,txpool
       - --http.vhosts=*
       - --http.corsdomain=*
+      - --ws
+      - --ws.port=8546
       - --metrics
       - --metrics.addr=0.0.0.0
       - --metrics.port=6060
@@ -22,6 +24,7 @@ services:
       - --log.console.verbosity=info
     ports:
       - "8545:8545"     # JSON-RPC HTTP
+      - "8546:8546"     # JSON-RPC WebSocket
       - "9090:9090"     # Private API (for remote access)
       - "30303:30303"   # P2P TCP
       - "30303:30303/udp" # P2P UDP
@@ -29,7 +32,7 @@ services:
       - "6061:6061"     # Pprof
     volumes:
       # Main data directory - this is where all blockchain data is stored
-      - ${ERIGON_DATA_DIR:-./test-data}:/home/erigon/.local/share/erigon
+      - /Volumes/T7/projects/hyperflow/erigon-ssd:/home/erigon/.local/share/erigon
     environment:
       - ERIGON_USER=erigon
     restart: unless-stopped
