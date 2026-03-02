@@ -29,6 +29,10 @@ docker compose down
 - **Prometheus**: http://localhost:9091
 - **Metrics**: http://localhost:6060/metrics
 
+## Public rpc and ws 
+ - RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+ - RPC_WS=wss://ethereum-sepolia-rpc.publicnode.com
+
 ## Configuration
 
 Copy `.env.example` to `.env` to customize settings:
